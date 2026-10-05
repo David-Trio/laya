@@ -1,0 +1,31 @@
+services:
+  laya-serve:
+    build:
+      context: .
+      args:
+        TORCH_INDEX: "cpu"          # "cu128" if the host has an NVIDIA GPU
+        TORCH_VERSION: "2.14.0"
+    command: ["laya-serve"]
+    environment:
+      LAYA_HOST: "0.0.0.0"
+      LAYA_PORT: "8000"
+      LAYA_DEVICE: "cpu"
+      LAYA_PRELOAD: "1"             # load checkpoints at boot, not on first request
+      LAYA_API_KEY: "${LAYA_API_KEY}"
+      LAYA_MAX_CONCURRENT: "16"
+      LAYA_THREADS: "4"
+      OMP_NUM_THREADS: "4"
+      LAYA_LOG_LEVEL: "info"
+    volumes:
+      - model-cache:/home/laya/.cache/huggingface
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10m             # first boot downloads ~2-3 GB of weights
+
+volumes:
+  model-cache:
